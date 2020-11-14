@@ -1,0 +1,37 @@
+#read PCA factors file
+permanova <- read.csv2("C:/Users/luisd/Dropbox/UP/Artigos originais/2020_Transgenerational metabolomics/V4/teste_permANOVA.csv", header = TRUE)
+
+#create gen-specific dataframes (numeric)
+library("dplyr")
+gen0 <- mutate_all((subset.data.frame(permanova, Generation == 0, c(3:5))), function(x) as.numeric(as.character(x)))
+gen1 <- mutate_all((subset.data.frame(permanova, Generation == 1, c(3,6:7))), function(x) as.numeric(as.character(x)))
+gen2 <- mutate_all((subset.data.frame(permanova, Generation == 2, c(3,8:9))), function(x) as.numeric(as.character(x)))
+genall <- mutate_all((subset.data.frame(permanova, select = c(2:3,10:11))), function(x) as.numeric(as.character(x)))
+
+##PermANOVA with pairwise comparisons (Vegan + RVAideMemoire package) for 2-D PCA
+library("vegan")
+library("RVAideMemoire")
+
+#Generation F0
+gen0.stat1 <- adonis2(subset.data.frame(gen0, select = c(2:3)) ~ as.factor(gen0$Group), data = gen0, method = "euclidean", by = "terms", parallel = getOption("mc.cores"), strata = gen0$Group)
+n <- dist(subset.data.frame(gen0, select = c(2:3)), "euclidean")
+gen0.stat2 <- pairwise.perm.manova(n, gen0$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
+gen0.stat2 <- do.call(rbind.data.frame, gen0.stat2)
+write.table(gen0.stat2, "test2.txt", sep="\t")
+
+#Generation F1
+gen1.stat1 <- adonis2(subset.data.frame(gen1, select = c(2:3)) ~ as.factor(gen1$Group), data = gen1, method = "euclidean", by = "terms", parallel = getOption("mc.cores"), strata = gen1$Group)
+n <- dist(subset.data.frame(gen1, select = c(2:3)), "euclidean")
+gen1.stat2 <- pairwise.perm.manova(n, gen1$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
+gen1.stat2 <- do.call(rbind.data.frame, gen1.stat2)
+
+#Generation F2
+gen2.stat1 <- adonis2(subset.data.frame(gen2, select = c(2:3)) ~ as.factor(gen2$Group), data = gen2, method = "euclidean", by = "terms", parallel = getOption("mc.cores"), strata = gen2$Group)
+n <- dist(subset.data.frame(gen2, select = c(2:3)), "euclidean")
+gen2.stat2 <- pairwise.perm.manova(n, gen2$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
+gen2.stat2 <- do.call(rbind.data.frame, gen2.stat2)
+
+#Generation all
+genall.stat1 <- adonis2(subset.data.frame(genall, select = c(3:4)) ~ as.factor(genall$Group) + as.factor(genall$Generation) + as.factor(genall$Group)*as.factor(genall$Generation), data = genall, method = "euclidean", by = "terms", parallel = getOption("mc.cores"), strata = genall$group2)
+n <- dist(subset.data.frame(genall, select = c(3:4)), "euclidean")
+write.table(genall.stat2, "test2.txt", sep="\t")
