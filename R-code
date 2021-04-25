@@ -1,6 +1,9 @@
 #read PCA factors file
 permanova <- read.csv2("C:/Users/luisd/Dropbox/UP/Artigos originais/2020_Transgenerational metabolomics/V4/teste_permANOVA.csv", header = TRUE)
 
+#load PCA factors (imported from SPSS)
+pca_data -> load("~/transgenerational_metabolomics/pca_data.RData")
+
 #create gen-specific dataframes (numeric)
 library("dplyr")
 gen0 <- mutate_all((subset.data.frame(permanova, Generation == 0, c(3:5))), function(x) as.numeric(as.character(x)))
