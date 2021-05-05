@@ -80,5 +80,5 @@ write.table(gen2.stat2, "gen2_pairwise_permanova.csv", sep=";", col.names = NA)
 #All Generations - Global permANOVA result (vegan package)
 genall.stat1 <- adonis2(subset.data.frame(genall, select = c(3:4)) ~ as.factor(genall$Group) + as.factor(genall$Generation) + as.factor(genall$Group)*as.factor(genall$Generation), data = genall, method = "euclidean", by = "terms", parallel = getOption("mc.cores"))
 
-#Generation F2 - write output to .csv
+#All Generations - write output to .csv
 write.table(genall.stat1, "genall_global_permanova.csv", sep=";", col.names = NA)
