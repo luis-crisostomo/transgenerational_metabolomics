@@ -1,40 +1,84 @@
-#read PCA factors file
-permanova <- read.csv2("C:/Users/luisd/Dropbox/UP/Artigos originais/2020_Transgenerational metabolomics/V4/teste_permANOVA.csv", header = TRUE)
+#check package requirements
+list.of.packages <- c("dplyr", "curl", "vegan", "RVAideMemoire")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages, ask = F, dependencies = T)
 
-#load PCA factors (imported from SPSS)
-pca_data -> load("~/transgenerational_metabolomics/pca_data.RData")
+#import PCA factors file
+library(curl)
 
-#create gen-specific dataframes (numeric)
+pca_data <- read.csv(curl("https://raw.githubusercontent.com/luis-crisostomo/transgenerational_metabolomics/main/pca_data.csv"))
+pca_data <- pca_data[c(2:12)]
+
+#Create Generation-specific dataframes (numeric)
 library("dplyr")
-gen0 <- mutate_all((subset.data.frame(permanova, Generation == 0, c(3:5))), function(x) as.numeric(as.character(x)))
-gen1 <- mutate_all((subset.data.frame(permanova, Generation == 1, c(3,6:7))), function(x) as.numeric(as.character(x)))
-gen2 <- mutate_all((subset.data.frame(permanova, Generation == 2, c(3,8:9))), function(x) as.numeric(as.character(x)))
-genall <- mutate_all((subset.data.frame(permanova, select = c(2:3,10:11))), function(x) as.numeric(as.character(x)))
 
-##PermANOVA with pairwise comparisons (Vegan + RVAideMemoire package) for 2-D PCA
+gen0 <- mutate_all((subset.data.frame(pca_data, Generation == 0, c(3:5))), function(x) as.numeric(as.character(x)))
+
+gen1 <- mutate_all((subset.data.frame(pca_data, Generation == 1, c(3,6:7))), function(x) as.numeric(as.character(x)))
+
+gen2 <- mutate_all((subset.data.frame(pca_data, Generation == 2, c(3,8:9))), function(x) as.numeric(as.character(x)))
+
+genall <- mutate_all((subset.data.frame(pca_data, select = c(2:3,10:11))), function(x) as.numeric(as.character(x)))
+
+#PermANOVA with pairwise comparisons (Vegan + RVAideMemoire package) for forced extraction PCA with 2 principal components
 library("vegan")
 library("RVAideMemoire")
 
-#Generation F0
-gen0.stat1 <- adonis2(subset.data.frame(gen0, select = c(2:3)) ~ as.factor(gen0$Group), data = gen0, method = "euclidean", by = "terms", parallel = getOption("mc.cores"), strata = gen0$Group)
+#Generation F0 - Global permANOVA result (vegan package)
+gen0.stat1 <- adonis2(subset.data.frame(gen0, select = c(2:3)) ~ as.factor(gen0$Group), data = gen0, method = "euclidean", by = "terms", parallel = getOption("mc.cores"))
+
+#Generation F0 - Pairwise permANOVA results (RVAideMemoire package)
 n <- dist(subset.data.frame(gen0, select = c(2:3)), "euclidean")
-gen0.stat2 <- pairwise.perm.manova(n, gen0$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
-gen0.stat2 <- do.call(rbind.data.frame, gen0.stat2)
-write.table(gen0.stat2, "test2.txt", sep="\t")
+gen0.stat2raw <- pairwise.perm.manova(n, gen0$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
 
-#Generation F1
-gen1.stat1 <- adonis2(subset.data.frame(gen1, select = c(2:3)) ~ as.factor(gen1$Group), data = gen1, method = "euclidean", by = "terms", parallel = getOption("mc.cores"), strata = gen1$Group)
+vec <- c(c(gen0.stat2raw[["F.value"]]), c(gen0.stat2raw[["R2.value"]]), c(gen0.stat2raw[["p.value"]]))
+vec <- vec[!is.na(vec)]
+gen0.stat2 <- as.data.frame(matrix(vec, c(3, 3)))
+rownames(gen0.stat2) <- c("CTRL vs. HFD", "CTRL vs. HFDt", "HFD vs. HFDt")
+colnames(gen0.stat2) <- c("F.value", "R2.value", "p.value")
+
+#Generation F0 - write output to .csv
+write.table(gen0.stat1, "gen0_global_permanova.csv", sep=";", col.names = NA)
+write.table(gen0.stat2, "gen0_pairwise_permanova.csv", sep=";", col.names = NA)
+
+
+#Generation F1 - Global permANOVA result (vegan package)
+gen1.stat1 <- adonis2(subset.data.frame(gen1, select = c(2:3)) ~ as.factor(gen1$Group), data = gen1, method = "euclidean", by = "terms", parallel = getOption("mc.cores"))
+
+#Generation F1 - Pairwise permANOVA results (RVAideMemoire package)
 n <- dist(subset.data.frame(gen1, select = c(2:3)), "euclidean")
-gen1.stat2 <- pairwise.perm.manova(n, gen1$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
-gen1.stat2 <- do.call(rbind.data.frame, gen1.stat2)
+gen1.stat2raw <- pairwise.perm.manova(n, gen1$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
 
-#Generation F2
-gen2.stat1 <- adonis2(subset.data.frame(gen2, select = c(2:3)) ~ as.factor(gen2$Group), data = gen2, method = "euclidean", by = "terms", parallel = getOption("mc.cores"), strata = gen2$Group)
+vec <- c(c(gen1.stat2raw[["F.value"]]), c(gen1.stat2raw[["R2.value"]]), c(gen1.stat2raw[["p.value"]]))
+vec <- vec[!is.na(vec)]
+gen1.stat2 <- as.data.frame(matrix(vec, c(3, 3)))
+rownames(gen1.stat2) <- c("CTRL vs. HFD", "CTRL vs. HFDt", "HFD vs. HFDt")
+colnames(gen1.stat2) <- c("F.value", "R2.value", "p.value")
+
+#Generation F1 - write output to .csv
+write.table(gen1.stat1, "gen1_global_permanova.csv", sep=";", col.names = NA)
+write.table(gen1.stat2, "gen1_pairwise_permanova.csv", sep=";", col.names = NA)
+
+
+#Generation F2 - Global permANOVA result (vegan package)
+gen2.stat1 <- adonis2(subset.data.frame(gen2, select = c(2:3)) ~ as.factor(gen2$Group), data = gen2, method = "euclidean", by = "terms", parallel = getOption("mc.cores"))
+
+#Generation F2 - Pairwise permANOVA results (RVAideMemoire package)
 n <- dist(subset.data.frame(gen2, select = c(2:3)), "euclidean")
-gen2.stat2 <- pairwise.perm.manova(n, gen2$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
-gen2.stat2 <- do.call(rbind.data.frame, gen2.stat2)
+gen2.stat2raw <- pairwise.perm.manova(n, gen2$Group, nperm = 999, progress = FALSE, p.method = "BH", F = TRUE, R2 = TRUE)
 
-#Generation all
-genall.stat1 <- adonis2(subset.data.frame(genall, select = c(3:4)) ~ as.factor(genall$Group) + as.factor(genall$Generation) + as.factor(genall$Group)*as.factor(genall$Generation), data = genall, method = "euclidean", by = "terms", parallel = getOption("mc.cores"), strata = genall$group2)
-n <- dist(subset.data.frame(genall, select = c(3:4)), "euclidean")
-write.table(genall.stat2, "test2.txt", sep="\t")
+vec <- c(c(gen2.stat2raw[["F.value"]]), c(gen2.stat2raw[["R2.value"]]), c(gen2.stat2raw[["p.value"]]))
+vec <- vec[!is.na(vec)]
+gen2.stat2 <- as.data.frame(matrix(vec, c(3, 3)))
+rownames(gen2.stat2) <- c("CTRL vs. HFD", "CTRL vs. HFDt", "HFD vs. HFDt")
+colnames(gen2.stat2) <- c("F.value", "R2.value", "p.value")
+
+#Generation F2 - write output to .csv
+write.table(gen2.stat1, "gen2_global_permanova.csv", sep=";", col.names = NA)
+write.table(gen2.stat2, "gen2_pairwise_permanova.csv", sep=";", col.names = NA)
+
+#All Generations - Global permANOVA result (vegan package)
+genall.stat1 <- adonis2(subset.data.frame(genall, select = c(3:4)) ~ as.factor(genall$Group) + as.factor(genall$Generation) + as.factor(genall$Group)*as.factor(genall$Generation), data = genall, method = "euclidean", by = "terms", parallel = getOption("mc.cores"))
+
+#Generation F2 - write output to .csv
+write.table(genall.stat1, "genall_global_permanova.csv", sep=";", col.names = NA)
